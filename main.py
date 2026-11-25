@@ -8,8 +8,10 @@ running the script any number of times always yields the same result.
 """
 
 import os
-import shutil
 import sys
+from pathlib import Path
+
+from copier import CopyVerificationError, deliver_artwork
 
 
 def main() -> int:
@@ -23,23 +25,15 @@ def main() -> int:
     out_dir = os.environ.get("MAKEFUN_OUTPUT_DIR", "/output")
     target = os.path.join(out_dir, "entry.png")
 
-    if not os.path.isfile(source):
+    # The actual copy-and-verify work lives in copier.py; this entry
+    # point only translates its outcome into messages and exit codes.
+    try:
+        size = deliver_artwork(Path(source), Path(out_dir))
+    except FileNotFoundError:
         print(f"error: artwork file not found: {source}", file=sys.stderr)
         return 1
-
-    os.makedirs(out_dir, exist_ok=True)
-    shutil.copyfile(source, target)
-
-    # Sanity-check the copy: the destination must match the source size
-    # exactly, otherwise something went wrong while writing the file.
-    source_size = os.path.getsize(source)
-    size = os.path.getsize(target)
-    if size != source_size:
-        print(
-            f"error: copy size mismatch: {target} is {size} bytes, "
-            f"expected {source_size}",
-            file=sys.stderr,
-        )
+    except CopyVerificationError as exc:
+        print(f"error: copy verification failed: {exc}", file=sys.stderr)
         return 1
 
     print(f"Copied {source} -> {target} ({size} bytes)")

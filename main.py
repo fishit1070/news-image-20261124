@@ -1,9 +1,10 @@
-"""Copy the bundled art.png into the make.fun output directory.
+"""Entry point for the news-image-20261124 make.fun submission.
 
-The finished image ships in this repository as ``art.png`` next to
-this script. The grader expects it as ``entry.png`` inside the
-directory named by MAKEFUN_OUTPUT_DIR (falling back to "/output").
-The copy is byte-for-byte, so repeated runs are identical.
+The artwork for this entry is finished ahead of time and stored in the
+repository as ``art.png``.  This script's only job is to deliver that
+image to the grader: it copies ``art.png`` into the output directory
+under the name ``entry.png``.  The copy is byte-for-byte identical, so
+running the script any number of times always yields the same result.
 """
 
 import os
@@ -12,25 +13,36 @@ import sys
 
 
 def main() -> int:
-    script_dir = os.path.dirname(os.path.abspath(__file__))
-    source = os.path.join(script_dir, "art.png")
-    output_dir = os.environ.get("MAKEFUN_OUTPUT_DIR") or "/output"
-    os.makedirs(output_dir, exist_ok=True)
-    destination = os.path.join(output_dir, "entry.png")
-    if not os.path.exists(source):
-        print(f"Error: source file not found: {source}", file=sys.stderr)
+    # Locate art.png relative to this script, not the working directory,
+    # so the script behaves the same no matter where it is invoked from.
+    here = os.path.dirname(os.path.abspath(__file__))
+    source = os.path.join(here, "art.png")
+
+    # The grader tells us where to write via MAKEFUN_OUTPUT_DIR; fall
+    # back to the conventional "/output" location when it is not set.
+    out_dir = os.environ.get("MAKEFUN_OUTPUT_DIR", "/output")
+    target = os.path.join(out_dir, "entry.png")
+
+    if not os.path.isfile(source):
+        print(f"error: artwork file not found: {source}", file=sys.stderr)
         return 1
-    shutil.copyfile(source, destination)
+
+    os.makedirs(out_dir, exist_ok=True)
+    shutil.copyfile(source, target)
+
+    # Sanity-check the copy: the destination must match the source size
+    # exactly, otherwise something went wrong while writing the file.
     source_size = os.path.getsize(source)
-    destination_size = os.path.getsize(destination)
-    if destination_size != source_size:
+    size = os.path.getsize(target)
+    if size != source_size:
         print(
-            f"Error: copied size mismatch: {destination} is "
-            f"{destination_size} bytes, expected {source_size} bytes",
+            f"error: copy size mismatch: {target} is {size} bytes, "
+            f"expected {source_size}",
             file=sys.stderr,
         )
         return 1
-    print(f"Copied {source} to {destination} ({source_size} bytes)")
+
+    print(f"Copied {source} -> {target} ({size} bytes)")
     return 0
 
 
